@@ -21,49 +21,33 @@ from wordcloud import WordCloud
 from sklearn.metrics.pairwise import cosine_similarity
 from scipy.cluster.hierarchy import dendrogram, linkage
 
-
-
-# 下载nltk数据
 nltk.download('punkt')
 nltk.download('stopwords')
 nltk.download('wordnet')
 nltk.download('averaged_perceptron_tagger_eng')
 
-# 读取Excel文件
 file_path = "/Users/irisbao/Desktop/AI-blended questions/学生日志-ENG/AI-blended questions-sum.xlsx"
 df = pd.read_excel(file_path)
 
-# 查看数据
 print(df.head())
 
 def clean_text(text):
-    # 去除HTML标签
     text = re.sub(r'<.*?>', '', text)
-    # 去除异常字符
     text = re.sub(r'[^\x00-\x7F]+', '', text)
-    # 去除冗余字符（如多个空格）
     text = re.sub(r'\s+', ' ', text).strip()
-    # 去除括号补充内容
     text = re.sub(r'\([^)]*\)', '', text)
-    # 去除URL
     text = re.sub(r'http\S+', '', text)
-    # 去除E-mail
     text = re.sub(r'\S+@\S+', '', text)
-    # 去除电话号码
     text = re.sub(r'\b\d{10}\b', '', text)
-    # 将全角字母数字空格替换为半角
     text = text.replace('　', ' ').replace('０', '0').replace('１', '1').replace('２', '2').replace('３', '3').replace('４', '4').replace('５', '5').replace('６', '6').replace('７', '7').replace('８', '8').replace('９', '9').replace('Ａ', 'A').replace('Ｂ', 'B').replace('Ｃ', 'C').replace('Ｄ', 'D').replace('Ｅ', 'E').replace('Ｆ', 'F').replace('Ｇ', 'G').replace('Ｈ', 'H').replace('Ｉ', 'I').replace('Ｊ', 'J').replace('Ｋ', 'K').replace('Ｌ', 'L').replace('Ｍ', 'M').replace('Ｎ', 'N').replace('Ｏ', 'O').replace('Ｐ', 'P').replace('Ｑ', 'Q').replace('Ｒ', 'R').replace('Ｓ', 'S').replace('Ｔ', 'T').replace('Ｕ', 'U').replace('Ｖ', 'V').replace('Ｗ', 'W').replace('Ｘ', 'X').replace('Ｙ', 'Y').replace('Ｚ', 'Z').replace('ａ', 'a').replace('ｂ', 'b').replace('ｃ', 'c').replace('ｄ', 'd').replace('ｅ', 'e').replace('ｆ', 'f').replace('ｇ', 'g').replace('ｈ', 'h').replace('ｉ', 'i').replace('ｊ', 'j').replace('ｋ', 'k').replace('ｌ', 'l').replace('ｍ', 'm').replace('ｎ', 'n').replace('ｏ', 'o').replace('ｐ', 'p').replace('ｑ', 'q').replace('ｒ', 'r').replace('ｓ', 's').replace('ｔ', 't').replace('ｕ', 'u').replace('ｖ', 'v').replace('ｗ', 'w').replace('ｘ', 'x').replace('ｙ', 'y').replace('ｚ', 'z')
     return text
 
-# 应用清洗函数
 df['reflection_cleaned'] = df['reflection'].apply(clean_text)
 
-# 初始化停用词、词干提取器和词型还原器
 stop_words = stopwords.words('english')
 lemmatizer = WordNetLemmatizer()
 stemmer = PorterStemmer()
 
-# 自定义词汇映射
 vocab_mapping = {
     "doubao": "ai",
     "welearn": "ai",
@@ -73,31 +57,18 @@ vocab_mapping = {
 
 
 def get_wordnet_pos(treebank_tag):
-    """优化后的词性转换函数"""
     tag = treebank_tag[0].upper() if treebank_tag else 'N'
     tag_dict = {"J": 'a', "V": 'v', "R": 'r', "N": 'n'}
-    return tag_dict.get(tag, 'n')  # 默认名词
-
+    return tag_dict.get(tag, 'n') 
+    
 def preprocess_text(text):
-    # 清洗文本
     cleaned = clean_text(text)
-
-    # 全文本小写化
     lower_text = cleaned.lower()
-
-    # 分词
     tokens = word_tokenize(lower_text)
-
-    # 二次小写化（处理可能存在的残留大写）
     tokens = [token.lower() for token in tokens]
-
-    # 去除非字母数字字符
     tokens = [token for token in tokens if token.isalnum()]
-
-    # 去除停用词（加强版过滤）
     tokens = [token for token in tokens if token not in stop_words]
 
-    # 词性标注与词形还原
     pos_tags = pos_tag(tokens)
     lemmas = []
     for word, tag in pos_tags:
@@ -105,27 +76,19 @@ def preprocess_text(text):
         lemma = lemmatizer.lemmatize(word, pos=pos)
         lemmas.append(lemma)
 
-    # 词汇映射（处理变形后的词汇）
     processed = [vocab_mapping.get(lemma, lemma) for lemma in lemmas]
 
     return ' '.join(processed)
 
-
-#需要直接删除的列表
 remove_words = {"didnt", "dont", "also", "doesnt", "cant", "couldnt", "couldnt"}
 
-# 应用预处理
 df['reflection_preprocessed'] = df['reflection_cleaned'].apply(preprocess_text)
 
-# 验证示例
 test_case = "Previewing texts made me more confident during the class."
 processed = preprocess_text(test_case)
 print(f"输入：{test_case}")
-print(f"输出：{processed}")  # 预期：preparation text make confident class
+print(f"输出：{processed}") 
 
-
-
-# 使用BERTopic进行文本嵌入和主题建模
 embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
 
 umap_model = UMAP(n_neighbors=10, n_components=5, min_dist=0.0, metric='cosine')
@@ -142,24 +105,19 @@ topic_model = BERTopic(
     top_n_words=10
 )
 
-# 训练模型
 topics, probs = topic_model.fit_transform(df['reflection_preprocessed'])
 
-# 获取主题信息
 topic_info = topic_model.get_topic_info()
 print("主题信息：", topic_info)
 topic_info.to_csv("topic_info.csv", index=False)
 print("主题信息已保存到topic_info.csv")
 
-# 查看文档主题分布
 df['topic'] = topics
 print("文档主题分布如下：")
 print(df[['reflection', 'topic']])
 
-# 获取所有主题的关键词及其重要度
 all_topics = topic_model.get_topics()
 
-# 保存每个主题的关键词及其重要度到CSV
 for topic_id, topic_info in all_topics.items():
     # topic_info是一个列表，每个元素是(关键词, 重要度)
     keywords = [word for word, _ in topic_info]
@@ -172,38 +130,31 @@ for topic_id, topic_info in all_topics.items():
     topic_df.to_csv(f"topic_{topic_id}_keywords.csv", index=False)
     print(f"主题{topic_id}的关键词及其重要度已保存到topic_{topic_id}_keywords.csv")
 
-# 保存每个文档的主题概率分布到CSV
-# 确保probs是一个二维数组
 if len(probs.shape) == 1:
     probs = probs.reshape(-1, 1)
 
 print("probs的形状：", probs.shape)
 
-# 获取所有主题的数量
-num_topics = len(all_topics)  # 使用all_topics的长度获取主题数量
+num_topics = len(all_topics) 
 
 for topic_id in range(num_topics):
-    # 提取文档在该主题下的概率
     if topic_id < probs.shape[1]:
         topic_probs = probs[:, topic_id]
     else:
         topic_probs = np.zeros(probs.shape[0])
-    # 将文档和概率合并成一个DataFrame
+
     df_topic = pd.DataFrame({
         '文档': df['reflection'],
         '主题概率': topic_probs
     })
-    # 保存到CSV文件，文件名格式为"topic_{topic_id}_prob.csv"
     df_topic.to_csv(f"topic_{topic_id}_prob.csv", index=False)
     print(f"主题{topic_id}的概率分布已保存到topic_{topic_id}_prob.csv")
 
-# 获取每个主题的关键词及其重要度
 keyword_importance = []
-topics = topic_model.get_topics()  # 获取所有主题的关键词及其重要度
+topics = topic_model.get_topics()  
 
 for topic_id, topic_info in topics.items():
     keywords, importance = zip(*topic_info)
-    # 截取前20个关键词及其重要度
     top_keywords = keywords[:20]
     top_importance = importance[:20]
     keyword_importance.append({
@@ -212,20 +163,17 @@ for topic_id, topic_info in topics.items():
         '重要度': ', '.join([f'{i:.4f}' for i in top_importance])
     })
 
-# 创建DataFrame并保存到CSV文件
 keyword_df = pd.DataFrame(keyword_importance)
 keyword_df.to_csv("topic_keyword_importance.csv", index=False)
 print("关键词重要度计算结果已保存到topic_keyword_importance.csv")
 
-# 1 生成词云图
 def generate_wordclouds(all_topics):
     for topic_id, topic_info in all_topics.items():
-        # 提取关键词及其重要度作为权重
         keywords = [word for word, _ in topic_info]
         importance = [imp for _, imp in topic_info]
-        # 创建词云
+
         wordcloud = WordCloud(width=800, height=400, background_color='white').generate_from_frequencies(dict(zip(keywords, importance)))
-        # 绘制并保存
+    
         plt.figure(figsize=(10, 6))
         plt.imshow(wordcloud, interpolation='bilinear')
         plt.title(f'主题 {topic_id} 的词云图')
@@ -236,7 +184,7 @@ def generate_wordclouds(all_topics):
 
 generate_wordclouds(all_topics)
 
-# 2. 绘制主题词分布图
+
 def plot_topic_word_distribution(all_topics):
     for topic_id, topic_info in all_topics.items():
         keywords = [word for word, _ in topic_info]
@@ -252,15 +200,15 @@ def plot_topic_word_distribution(all_topics):
 
 plot_topic_word_distribution(all_topics)
 
-# 3 绘制文档主题分布图
+
 def visualize_document_distribution(df, topics):
-    # 确保topics是一个二维数组
+   
     if len(topics.shape) == 1:
         topics = topics.reshape(-1, 1)
-    # 使用UMAP进行降维
+    
     reducer = UMAP(random_state=42)
     embeddings = reducer.fit_transform(topics)
-    # 绘制散点图
+    
     plt.figure(figsize=(12, 8))
     sns.scatterplot(x=embeddings[:, 0], y=embeddings[:, 1], hue=df['topic'], palette='tab20', legend='full')
     plt.title('文档主题分布图')
@@ -270,21 +218,21 @@ def visualize_document_distribution(df, topics):
 
 visualize_document_distribution(df, probs)
 
-# 4. 生成隐含主题分布图
+
 def visualize_inter_topic_map(all_topics):
-    # 提取主题关键词及其重要度
+   
     topic_embeddings = []
     for topic_info in all_topics.values():
         keywords, importance = zip(*topic_info)
-        # 使用关键词的重要性作为主题嵌入
+      
         topic_embeddings.append(importance)
     topic_embeddings = np.array(topic_embeddings)
-    # 计算余弦相似度
+    
     similarity = cosine_similarity(topic_embeddings)
-    # 使用UMAP进行降维
+    
     reducer = UMAP(random_state=42)
     topic_positions = reducer.fit_transform(similarity)
-    # 绘制散点图
+    
     plt.figure(figsize=(10, 6))
     sns.scatterplot(x=topic_positions[:, 0], y=topic_positions[:, 1], hue=range(len(topic_positions)), palette='tab20', legend='full')
     plt.title('隐含主题分布图')
@@ -294,9 +242,9 @@ def visualize_inter_topic_map(all_topics):
 
 visualize_inter_topic_map(all_topics)
 
-# 5 绘制主题间距离热图
+
 def plot_topic_heatmap(all_topics):
-    # 提取主题关键词及其重要度
+    
     topic_embeddings = []
     for topic_info in all_topics.values():
         keywords, importance = zip(*topic_info)
@@ -314,21 +262,21 @@ def plot_topic_heatmap(all_topics):
 
 plot_topic_heatmap(all_topics)
 
-# 6 绘制层次聚类图
+
 def plot_hierarchical_clustering(all_topics):
-    # 提取主题关键词及其重要度
+    
     topic_embeddings = []
     for topic_info in all_topics.values():
         keywords, importance = zip(*topic_info)
         topic_embeddings.append(importance)
     topic_embeddings = np.array(topic_embeddings)
-    # 计算相似度矩阵
+   
     similarity = cosine_similarity(topic_embeddings)
-    # 计算距离矩阵
+   
     distance_matrix = 1 - similarity
-    # 进行层次聚类
+ 
     linkage_matrix = linkage(distance_matrix, method='ward')
-    # 绘制树状图
+    
     plt.figure(figsize=(10, 6))
     dendrogram(linkage_matrix, labels=range(len(all_topics)), orientation='top', distance_sort='descending', show_leaf_counts=True)
     plt.title('层次聚类树状图')
